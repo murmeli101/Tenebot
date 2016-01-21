@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
 """ --- Tenebot by Tenebrae (twitch.tv/tenebrae101) ---
-Add necessary information to secrets.py before using the program 
+IMPORTANT: Add necessary information to secrets.py before using the program 
+
+This code by Liquid was used as a basis for the program:
+https://www.sevadus.tv/forums/index.php?/topic/774-simple-python-irc-bot/
 
 TODO
 - automatic repeats
