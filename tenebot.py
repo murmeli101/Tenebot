@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-""" --- Tenebot by Tenebrae (twitch.tv/tenebrae101) --- 
-""" Add necessary information to secrets.py before using the program """
+""" --- Tenebot by Tenebrae (twitch.tv/tenebrae101) ---
+Add necessary information to secrets.py before using the program 
 
 TODO
 - automatic repeats
