@@ -83,8 +83,6 @@ def parse_message(msg):
             command_words()
         elif msg[0] == "!users" and sender in MODS:
             command_users()
-#        elif msg[0] == "!mike":
-#            send_message(CHAN, 'https://www.youtube.com/watch?v=w0DxF2OR2QA')
 #        elif msg[0] == "!wr":
 #            command_wr()
 
