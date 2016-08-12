@@ -242,6 +242,7 @@ def command_quote(nick = None):
 
 
 def command_words():
+    """Post a list of  most common words"""
     words = most_common_words()
     contentwords = [(word, count) for word, count in words.most_common(50) if word not in stopwords.words('english')]
     cleantext = ""
@@ -258,7 +259,8 @@ def command_users():
 
 
 def command_wr():
-    """Get the world record from speedrun.com"""
+    """Get the world record from speedrun.com
+	NOTE: probably won't work after site updates"""
     #Get the title of current game on Twitch
     url = 'https://api.twitch.tv/kraken/channels/' + CHAN[1:]
 
@@ -291,7 +293,10 @@ def command_wr():
     send_message(CHAN, 'WR in category %s is %s by %s' % (category, time, player))
 
    
-# --------------------------------------------- End Command Functions ----------------------------------------------
+# --------------------------------------------- End Chat Command Functions ----------------------------------------------
+
+
+# --------------------------------------------- Main Loop ----------------------------------------------
 
 """ connect to the chat server"""
 con = socket.socket()
