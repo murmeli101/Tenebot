@@ -1,15 +1,8 @@
 #!/usr/bin/env python3
 
-""" --- Tenebot by Tenebrae (twitch.tv/tenebrae101) ---
+""" --- Tenebot by Tenebrae (twitch.tv/tenebrae101) --- 
+
 IMPORTANT: Add necessary information to secrets.py before using the program 
-
-This code by Liquid was used as a basis for the program:
-https://www.sevadus.tv/forums/index.php?/topic/774-simple-python-irc-bot/
-
-TODO
-- automatic repeats
-- wordnet synset (noun)
-- make a nice chart of comment count per user
 """
 
 import re, sys, socket, goslate, wikipedia, datetime, os, nltk, requests, json
@@ -79,19 +72,19 @@ def parse_message(msg):
             command_translate(msg[1])
         elif msg[0] == "!commands":
             command_commands()
-        elif msg[0] == "!quote" and sender in MODS:
+        elif msg[0] == "!quote":
             command_quote(msg[1].strip())
-        elif msg[0] == "!quote" and sender not in MODS: # just trolling
+#        elif msg[0] == "!quote" and sender not in MODS: # just trolling
 #            command_quote(sender.strip())
-             command_quote()
+#             command_quote()
         elif msg[0] == "!wiki" and sender in MODS:
             command_wiki(msg[1])
         elif msg[0] == "!words" and sender in MODS:
             command_words()
         elif msg[0] == "!users" and sender in MODS:
             command_users()
-        elif msg[0] == "!mike":
-            send_message(CHAN, 'https://www.youtube.com/watch?v=w0DxF2OR2QA')
+#        elif msg[0] == "!mike":
+#            send_message(CHAN, 'https://www.youtube.com/watch?v=w0DxF2OR2QA')
 #        elif msg[0] == "!wr":
 #            command_wr()
 
@@ -118,8 +111,7 @@ def get_channel(name):
     try:
         return r.json()['display_name']
     except KeyError:
-        print("KeyError: Check what went wrong ")
-        command_quote() #if something goes wrong, try again
+        return name #if their Twitch account is deleted, just return the nick (no uppercases)
 
 
 def make_chatcorpus():
@@ -239,10 +231,10 @@ def command_quote(nick = None):
         user_comments = []
         for comment, name, year in comments:
             if name == nick.lower():
-                user_comments.append(comment)
+                user_comments.append((comment,year))
         if len(user_comments) > 0:
             i = randint(0, len(user_comments)-1)
-            send_message(CHAN, '\"%s\" - %s, 2015' % (user_comments[i], get_channel(nick.lower())))
+            send_message(CHAN, '\"%s\" - %s, %s' % (user_comments[i][0], get_channel(nick), user_comments[i][1]))
         else:
             send_message(CHAN, 'Booooo, no such user in the database')
     else:
