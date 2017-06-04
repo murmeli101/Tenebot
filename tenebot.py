@@ -5,13 +5,16 @@
 IMPORTANT: Add necessary information to secrets.py before using the program 
 """
 
-import re, sys, socket, goslate, wikipedia, datetime, os, nltk, requests, json
+import re, sys, socket, datetime, os, nltk, requests, json
+from time import sleep
 from random import randint
 from urllib import request
 from nltk.corpus import stopwords
 from secrets import *
 
-
+""" global variables """
+chatpath = os.path.relpath("chatlog")
+con = socket.socket()
 
 # --------------------------------------------- Start Functions ----------------------------------------------------
 def send_pong(msg):
@@ -62,42 +65,37 @@ def get_message(msg):
     return result
 
 
-def parse_message(msg):
+def parse_message(sender, msg, comments):
     if len(msg) >= 1:
         msg = msg.split(' ', 1)
         """ list of commands """
         if msg[0] == "!test" and sender in MODS:
             command_test()
-        elif msg[0] == "!translate" and sender in MODS:
-            command_translate(msg[1])
         elif msg[0] == "!commands":
             command_commands()
         elif msg[0] == "!quote":
-            command_quote(msg[1].strip())
-#        elif msg[0] == "!quote" and sender not in MODS: # just trolling
-#            command_quote(sender.strip())
-#             command_quote()
-        elif msg[0] == "!wiki" and sender in MODS:
-            command_wiki(msg[1])
-        elif msg[0] == "!words" and sender in MODS:
-            command_words()
-        elif msg[0] == "!users" and sender in MODS:
-            command_users()
-#        elif msg[0] == "!wr":
-#            command_wr()
+            command_quote(comments, msg[1].strip())
+        elif msg[0] == "!faq":
+            command_faq()
 
 
 def get_comments():
     """Parse all comments and return a list of (comment, sender, year) tuple """
     comments = []
+    data = ""
 
+    print("Loading comments...")
     for file in os.listdir(chatpath):
         if file.endswith(".txt"): # a bit redundant
-            with open(chatpath + "/" + file, 'rb') as f:
-                for line in f.readlines():
-                    data = line.decode()[11:]
-                    data = re.split(r": ", data)
-                    comments.append((re.split(r" \n", data[1])[0], data[0], file[8:12]))
+            try:
+                with open(chatpath + "/" + file, 'rb') as f:
+                    for line in f.readlines():
+                        data = line.decode()[11:]
+                        data = re.split(r": ", data)
+                        comments.append((re.split(r" \n", data[1])[0], data[0], file[8:12]))
+            except Exception:
+                print("Error while loading comments.")
+    print("Loading comments... Done")
     return comments
 
 
@@ -112,68 +110,28 @@ def get_channel(name):
         return name #if their Twitch account is deleted, just return the nick (no uppercases)
 
 
-def make_chatcorpus():
-    """ Return a list of all words in every log file"""
-    # you could also use nltk.word_tokenize or nltk.regexp_tokenize(text, pattern)
-    # edit the code to filter out non-alphabetic characters
-    messages = []
-
-    for file in os.listdir(chatpath):
-        if file.endswith(".txt"):
-            with open(chatpath + "/" + file, 'rb') as f:
-                for line in f.readlines():
-                    #data = re.split(r"\] ", line.decode())
-                    data = line.decode()[11:]
-                    data = re.split(r": ", data)
-                    del data[0]
-                    
-                    data = re.split(r" \n", data[0])
-                    message = data[0].split() # message
-                    messages += message
-    return messages
-
-
-def comments_per_nick():
-    """ Return the frequency distribution of commenters """
-    comments = get_comments()
-    names = [name for _, name in comments]
-    fdist = nltk.FreqDist(names)
-    return fdist
-
-
-def most_common_words():
-    '''Print most used words '''
-    #unused 
-    words = make_chatcorpus()
-    fdist = nltk.FreqDist(w.lower() for w in words)
-    return fdist
-
-
 def write_log(sender, message):
     """Write s comment to log"""
-    with open(chatpath + "/" + filename, "ab") as f:# 'binary' because we must be able to write non-Latin characters
-        f.write("[".encode())
-        f.write(str(datetime.datetime.now().time())[:8].encode()) # current time(str(datetime.datetime.now().time())[:8])
-        f.write("] ".encode())
-        f.write(sender.encode())
-        f.write(": ".encode())
-        f.write(message.encode())
-        f.write("\n".encode())
+    filename = "chatlog_" + str(datetime.date.today()) + ".txt"
+    try:
+        with open(chatpath + "/" + filename, "ab") as f:# 'binary' because we must be able to write non-Latin characters
+            f.write("[".encode())
+            f.write(str(datetime.datetime.now().time())[:8].encode())
+            f.write("] ".encode())
+            f.write(sender.encode())
+            f.write(": ".encode())
+            f.write(message.encode())
+            f.write("\n".encode())
+    except Exception:
+        print("Error while writing a message to a file.")
 
-"""
-def visualize_users():
-    '''Make a graph of users ordered by sent messages'''
-    #unused, needs to be a bar graph
-    users = comments_per_nick()
-    users.plot()
-
-
-def visualize_words():
-    '''Make a graph of words by their frequency (TODO logarithmic scale'''
-    #unused
-    words = most_common_words()
-    words.plot()
-"""
+def connect():
+    """Connect to the chat server"""
+    con.connect((HOST, PORT))
+    send_pass(PASS)
+    send_nick(NICK)
+    join_channel(CHAN)
+    
 
 # --------------------------------------------- End Helper Functions -----------------------------------------------
 
@@ -183,46 +141,14 @@ def visualize_words():
 def command_test():
     send_message(CHAN, 'Now I am become Speedrunner, the destroyer of games')
 
-
-def command_translate(message):
-    translated = gs.translate(message, 'ko')
-    # Chinese pinyin would be >>> gs_roman = Goslate(WRITING_ROMAN) / print(gs_roman.translate('Hello', 'zh'))
-    translated_back = gs.translate(translated, 'en')
-    send_message(CHAN, "Korean: " + translated + " English: " + translated_back)
-
-
 def command_commands():
-    send_message(CHAN, 'Available commands: !quote, !wr')
+    send_message(CHAN, 'Available commands: !quote, !faq')
+
+def command_faq():
+    send_message(CHAN, 'Sonic 1 notes: http://pastebin.com/EXknRQKg')
 
 
-def command_wiki(word):
-    '''Post the wikipedia definition for a word'''
-    definition = ""
-    try:
-        definition = wikipedia.summary(word, sentences=2)
-        if len(definition) > 220:
-            definition = wikipedia.summary(word, sentences=1)
-            if len(definition) > 200:
-                send_message(CHAN, definition[:197] + "...")
-            else:
-                send_message(CHAN, definition)
-        elif len(definition) < 30:
-            definition = wikipedia.summary(word, sentences=3)
-            if len(definition) > 200:
-                send_message(CHAN, definition[:197] + "...")
-            else:
-                send_message(CHAN, definition)
-        else:
-            send_message(CHAN, definition)
-
-    except wikipedia.exceptions.DisambiguationError as e:
-        send_message(CHAN, "Disambiguation: 1. " + e.options[0] + " 2. " + e.options[1] + " ...")
-
-    except wikipedia.exceptions.PageError as e:
-        send_message(CHAN, "Page error. Please try another word.")
-
-
-def command_quote(nick = None):
+def command_quote(comments, nick = None):
     """ Find a comment by a random user or by a user defined by the first argument"""
     if nick:
         #search a comment by a certain person
@@ -231,7 +157,11 @@ def command_quote(nick = None):
             if name == nick.lower():
                 user_comments.append((comment,year))
         if len(user_comments) > 0:
-            i = randint(0, len(user_comments)-1)
+            try:
+                i = randint(0, len(user_comments)-1)
+            except Exception:
+                print("Exception while using randint")
+                pass
             send_message(CHAN, '\"%s\" - %s, %s' % (user_comments[i][0], get_channel(nick), user_comments[i][1]))
         else:
             send_message(CHAN, 'Booooo, no such user in the database')
@@ -240,110 +170,87 @@ def command_quote(nick = None):
         i = randint(0, len(comments)-1)
         send_message(CHAN, '\"%s\" - %s, %s' % (comments[i][0], get_channel(comments[i][1]), comments[i][2]))
 
-
-def command_words():
-    """Post a list of  most common words"""
-    words = most_common_words()
-    contentwords = [(word, count) for word, count in words.most_common(50) if word not in stopwords.words('english')]
-    cleantext = ""
-    for item in contentwords:
-        i = "('" + str(item[0]) + "', " + str(item[1]) + "), "
-        cleantext += str(i)
-    send_message(CHAN, 'Most common words excluding stopwords: %s' % cleantext[:len(cleantext)-2])
-
-
-def command_users():
-    """Post a list of  most active users """
-    users = comments_per_nick()
-    print(users.most_common(10))
-
-
-def command_wr():
-    """Get the world record from speedrun.com
-	NOTE: probably won't work after site updates"""
-    #Get the title of current game on Twitch
-    url = 'https://api.twitch.tv/kraken/channels/' + CHAN[1:]
-
-    r = requests.get(url, headers=HEADERS)
-    game = r.json()['game']
-
-    #Find game title on speedrun.com 
-    url = "http://www.speedrun.com/api/v1/games?name=" + game
-    r = requests.get(url)
-    game = str(r.json()['data'][0]['names']['international'])
-
-    #and find wr
-    url = "http://www.speedrun.com/api_records.php?game=" + game
-    r = request.urlopen(url)
-
-    data = json.loads(r.read().decode())
-    print(data)
-    print(url)
-    print(json.dumps(data[list(data.keys())[0]], sort_keys=True, indent=4)) #pretty print for testing
-
-    gamename = list(data.keys())[0]
-    print(gamename)
-    category = list(data[gamename].keys())[0]
-
-    timeseconds = int(data[gamename][category]['time'])
-    time = str(datetime.timedelta(seconds=timeseconds))
-    
-    player = data[gamename][category]['player']
-
-    send_message(CHAN, 'WR in category %s is %s by %s' % (category, time, player))
-
-   
 # --------------------------------------------- End Chat Command Functions ----------------------------------------------
-
 
 # --------------------------------------------- Main Loop ----------------------------------------------
 
-""" connect to the chat server"""
-con = socket.socket()
-con.connect((HOST, PORT))
+def main():
+    connect()
+    data = ""
+    comments = get_comments()
 
-send_pass(PASS)
-send_nick(NICK)
-join_channel(CHAN)
+    while True:
+        try:
+            """ unparsed message looks like this:
+                :nick!nick@nick.tmi.twitch.tv PRIVMSG #channel :message"""
+            if (str(datetime.datetime.now())[11:19] == "00:07:00"):
+                comments = get_comments()
+                print('Comments refreshed')
+                try:
+                    with open(chatpath + "/" + 'log.log', "ab") as f:
+                        f.write("Comments refreshed ".encode())
+                        f.write((str(datetime.datetime.now()) + "\n").encode())
+                except Exception:
+                    print("Error while writing to a file.")
+                sleep(1)
+    
+            data = data + con.recv(1024).decode('UTF-8')
+            data_split = re.split(r"[~\r\n]+", data) #[':nick!nick@nick.tmi.twitch.tv PRIVMSG #channel :message', '']
+            data = data_split.pop()
+    
+            for line in data_split:
+                line = str.rstrip(line)
+                line = str.split(line)
+    
+                if len(line) >= 1:
+                    if line[0] == 'PING':
+                        send_pong(line[1])
+                        print('pong')
+    
+                    if line[1] == 'PRIVMSG':
+                        sender = get_sender(line[0])
+                        message = get_message(line)
+                        parse_message(sender, message, comments)
+                        try:
+                            print("%s: %s" %(sender, message))
+                        except UnicodeEncodeError:
+                            print(sender + ": [can't output unicode characters]")
+                            pass
+                        if message.startswith('!') == False: # don't log chat commands
+                            write_log(sender, message)
+    
+        except socket.error:
+            print("Socket died")
+            try:
+                with open(chatpath + "/" + 'log.log', "ab") as f:
+                    f.write("socket error ".encode())
+                    f.write((str(datetime.datetime.now()) + "\n").encode())
+            except Exception:
+                print("Error while writing to a file.")
+            connect()
+            pass
+    
+        except socket.timeout:
+            print("Socket timeout")
+            try:
+                with open(chatpath + "/" + 'log.log', "ab") as f:
+                    f.write("socket died ".encode())
+                    f.write((str(datetime.datetime.now()) + "\n").encode())
+            except Exception:
+                print("Error while writing to a file.")
+            connect()
+            pass
+    
+        except:
+            print("Unexpected error:")
+            try:
+                with open(chatpath + "/" + 'log.log', "ab") as f:
+                    f.write("unexpected error  ".encode())
+                    f.write((str(datetime.datetime.now()) + "\n").encode())
+            except Exception:
+                print("Error while writing to a file.")
+            exit(1)
 
-""" global variables """
-data = ""
-gs = goslate.Goslate()
-chatpath = os.path.relpath("chatlog")
-filename = "chatlog_" + str(datetime.date.today()) + ".txt"
-comments = get_comments() # load comments to memory for quick access. used in command_quote
+# --------------------------------------------- Main Loop End ----------------------------------------------
 
-
-while True:
-    try:
-        """ unparsed message looks like this:
-            :nick!nick@nick.tmi.twitch.tv PRIVMSG #channel :message"""
-        data = data + con.recv(1024).decode('UTF-8')
-        data_split = re.split(r"[~\r\n]+", data) #[':nick!nick@nick.tmi.twitch.tv PRIVMSG #channel :message', '']
-        data = data_split.pop()
-
-        for line in data_split:
-            line = str.rstrip(line)
-            line = str.split(line)
-
-            if len(line) >= 1:
-                if line[0] == 'PING':
-                    send_pong(line[1])
-
-                if line[1] == 'PRIVMSG':
-                    sender = get_sender(line[0])
-                    message = get_message(line)
-                    parse_message(message)
-                    try:
-                        print("%s: %s" %(sender, message))
-                    except UnicodeEncodeError:
-                        print(sender + ": [can't output unicode characters]")
-                        pass
-                    if message.startswith('!') == False: # don't log chat commands
-                        write_log(sender, message)
-
-    except socket.error:
-        print("Socket died")
-
-    except socket.timeout:
-        print("Socket timeout")
+main()
